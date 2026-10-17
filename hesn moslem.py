@@ -33,6 +33,8 @@ RECITERS = {
     "ماهر المعيقلي": "ar.mahermuaiqly",
 }
 
+DEFAULT_RECITER = "محمد صديق المنشاوي"
+
 # =========================
 # التصميم والخلفية الخضراء
 # =========================
@@ -58,10 +60,6 @@ st.markdown("""
 [data-testid="stSidebar"] {
     direction: rtl;
     background: #073426;
-}
-
-[data-testid="stMain"] {
-    background: transparent;
 }
 
 .block-container {
@@ -94,7 +92,7 @@ st.markdown("""
     border: 1px solid #c5a84c;
     border-radius: 22px;
     padding: 26px 18px;
-    margin: 12px 0 25px 0;
+    margin: 12px 0 20px 0;
     text-align: center;
     box-shadow: 0 8px 25px rgba(0,0,0,.22);
 }
@@ -109,7 +107,7 @@ st.markdown("""
 .sheikh-desc {
     color: #e7f3df;
     font-size: 16px;
-    margin-bottom: 18px;
+    margin-bottom: 4px;
 }
 
 .ayah {
@@ -151,7 +149,7 @@ st.markdown("""
     color: #ffffff;
 }
 
-h1, h2, h3, h4, p, label, .stMarkdown {
+h1, h2, h3, h4, p, label {
     color: #fffdf3;
 }
 
@@ -161,7 +159,7 @@ h1, h2, h3, h4, p, label, .stMarkdown {
 
 .stButton button {
     border-radius: 12px;
-    min-height: 45px;
+    min-height: 46px;
     border: 1px solid #c5a84c;
     font-weight: bold;
     transition: all .2s ease;
@@ -197,16 +195,6 @@ div.st-key-adhkar_float button {
 div.st-key-adhkar_float button:hover {
     background: #087f5b;
     color: white;
-}
-
-[data-testid="stSelectbox"] div,
-[data-testid="stTextInput"] input,
-[data-testid="stNumberInput"] input {
-    border-radius: 10px;
-}
-
-[data-testid="stAlert"] {
-    border-radius: 12px;
 }
 
 hr {
@@ -250,34 +238,39 @@ hr {
 </div>
 """, unsafe_allow_html=True)
 
+
 # =========================
 # تحميل السور
 # =========================
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_surah_list():
-    r = requests.get(f"{QURAN_API}/surah", timeout=20)
-    r.raise_for_status()
-    data = r.json()
+    response = requests.get(f"{QURAN_API}/surah", timeout=20)
+    response.raise_for_status()
+    data = response.json()
+
     if data.get("code") != 200:
         raise ValueError("تعذر تحميل قائمة السور")
+
     return data["data"]
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_surah(number, edition):
-    r = requests.get(
+    response = requests.get(
         f"{QURAN_API}/surah/{number}/{edition}",
         timeout=30,
     )
-    r.raise_for_status()
-    data = r.json()
+    response.raise_for_status()
+    data = response.json()
+
     if data.get("code") != 200:
         raise ValueError("تعذر تحميل السورة")
+
     return data["data"]
 
 
 # =========================
-# تحميل الأذكار
+# معالجة ملفات الأذكار
 # =========================
 def response_json_utf8(response):
     response.raise_for_status()
@@ -403,6 +396,7 @@ def get_adhkar():
                 timeout=25,
                 headers={"User-Agent": "Mozilla/5.0"},
             )
+
             data = response_json_utf8(response)
             records = normalize_adhkar(data)
 
@@ -421,13 +415,20 @@ def get_adhkar():
 
 
 # =========================
-# حالة التطبيق والتنقل
+# حالة التطبيق
 # =========================
 if "page" not in st.session_state:
     st.session_state.page = "الرئيسية"
 
 if "show_adhkar" not in st.session_state:
     st.session_state.show_adhkar = False
+
+# تحديد القارئ والسورة افتراضيًا
+if "loaded_surah" not in st.session_state:
+    st.session_state.loaded_surah = None
+
+if "loaded_reciter" not in st.session_state:
+    st.session_state.loaded_reciter = RECITERS[DEFAULT_RECITER]
 
 
 # =========================
@@ -440,6 +441,7 @@ if st.button("📿\nالأذكار", key="adhkar_float"):
     else:
         st.session_state.page = "الأذكار"
         st.session_state.show_adhkar = True
+
     st.rerun()
 
 
@@ -484,11 +486,22 @@ if st.session_state.page == "الرئيسية":
     </div>
     """, unsafe_allow_html=True)
 
-    # زر قراءة القرآن تحت اسم الشيخ
+    # زر الاستماع تحت اسم الشيخ
+    if st.button(
+        "🎧 استمع إلى تلاوات الشيخ",
+        key="listen_sheikh",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.session_state.page = "القرآن الكريم"
+        st.session_state.loaded_surah = 1
+        st.session_state.loaded_reciter = RECITERS[DEFAULT_RECITER]
+        st.rerun()
+
+    # زر قراءة القرآن أسفل زر الاستماع
     if st.button(
         "📖 قراءة القرآن الكريم",
         key="read_quran_under_sheikh",
-        type="primary",
         use_container_width=True,
     ):
         st.session_state.page = "القرآن الكريم"
@@ -501,6 +514,7 @@ if st.session_state.page == "الرئيسية":
     with col1:
         st.markdown("### 📖 القرآن الكريم")
         st.write("اختر السورة والقارئ واستمع إلى التلاوة.")
+
         if st.button(
             "افتح القرآن الكريم",
             key="home_quran",
@@ -512,6 +526,7 @@ if st.session_state.page == "الرئيسية":
     with col2:
         st.markdown("### 📿 حصن المسلم")
         st.write("أذكار الصباح والمساء والنوم والصلاة وغيرها.")
+
         if st.button(
             "افتح جميع الأذكار",
             key="home_adhkar",
@@ -521,11 +536,11 @@ if st.session_state.page == "الرئيسية":
             st.session_state.show_adhkar = True
             st.rerun()
 
-    st.info("يمكنك الضغط على الزر الدائري لفتح الأذكار من أي صفحة.")
+    st.info("اضغط على الزر الدائري لفتح الأذكار من أي صفحة.")
 
 
 # =========================
-# القرآن الكريم
+# صفحة القرآن الكريم
 # =========================
 elif st.session_state.page == "القرآن الكريم":
 
@@ -539,14 +554,35 @@ elif st.session_state.page == "القرآن الكريم":
 
     names = [f'{s["number"]}. {s["name"]}' for s in surahs]
 
-    selected_name = st.selectbox("اختر السورة", names)
+    # السورة الافتراضية هي الفاتحة عند الضغط على زر الاستماع
+    default_surah = st.session_state.loaded_surah or 1
+    default_surah = max(1, min(default_surah, len(names)))
+
+    selected_name = st.selectbox(
+        "اختر السورة",
+        names,
+        index=default_surah - 1,
+    )
+
     surah_number = names.index(selected_name) + 1
+
+    reciter_names = list(RECITERS.keys())
+    current_edition = st.session_state.loaded_reciter
+
+    default_reciter_index = next(
+        (
+            i for i, name in enumerate(reciter_names)
+            if RECITERS[name] == current_edition
+        ),
+        reciter_names.index(DEFAULT_RECITER),
+    )
 
     reciter_name = st.selectbox(
         "اختر القارئ",
-        list(RECITERS.keys()),
-        index=list(RECITERS.keys()).index("محمد صديق المنشاوي"),
+        reciter_names,
+        index=default_reciter_index,
     )
+
     edition = RECITERS[reciter_name]
 
     if st.button(
@@ -594,7 +630,7 @@ elif st.session_state.page == "القرآن الكريم":
                          background:#0b4935;border:1px solid #c5a84c;
                          border-radius:15px;color:#fffbea">
                       <h3 style="color:#f2d477">
-                        🎧 استمع إلى السورة كاملة
+                        🎧 استمع إلى سورة {html.escape(surah['name'])}
                       </h3>
                       <audio id="player" controls
                         style="width:100%;max-width:600px"></audio>
@@ -627,13 +663,17 @@ elif st.session_state.page == "القرآن الكريم":
                     """,
                     height=175,
                 )
+            else:
+                st.warning(
+                    "لا تتوفر روابط صوتية لهذه السورة من المصدر الحالي."
+                )
 
         except Exception as exc:
             st.error(f"تعذر تحميل السورة: {exc}")
 
 
 # =========================
-# حصن المسلم والأذكار
+# صفحة حصن المسلم والأذكار
 # =========================
 elif st.session_state.page == "الأذكار":
 
@@ -667,6 +707,7 @@ elif st.session_state.page == "الأذكار":
 
         if search.strip():
             query = search.strip()
+
             filtered = [
                 item for item in filtered
                 if query in item["text"]
