@@ -5,9 +5,9 @@ import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
-# =========================
-# إعداد الصفحة
-# =========================
+# =====================================
+# إعدادات التطبيق
+# =====================================
 st.set_page_config(
     page_title="القرآن الكريم وحصن المسلم",
     page_icon="📖",
@@ -17,9 +17,9 @@ st.set_page_config(
 QURAN_API = "https://api.alquran.cloud/v1"
 HISN_API = "https://www.hisnmuslim.com/api/ar/"
 
-# =========================
-# تصميم الواجهة
-# =========================
+# =====================================
+# تنسيق الواجهة
+# =====================================
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap');
@@ -60,11 +60,11 @@ h1, h2, h3 {
 """, unsafe_allow_html=True)
 
 st.title("📖 القرآن الكريم وحصن المسلم")
-st.caption("تلاوة القرآن الكريم والأذكار اليومية")
+st.caption("اقرأ القرآن الكريم واستمع للتلاوة وتصفح الأذكار")
 
-# =========================
-# جلب بيانات القرآن
-# =========================
+# =====================================
+# تحميل بيانات القرآن
+# =====================================
 @st.cache_data(ttl=43200)
 def get_surahs():
     response = requests.get(
@@ -85,9 +85,9 @@ def get_surah(number):
     return response.json()["data"]
 
 
-# =========================
-# جلب بيانات حصن المسلم
-# =========================
+# =====================================
+# تحميل بيانات حصن المسلم
+# =====================================
 @st.cache_data(ttl=86400)
 def get_hisn():
     response = requests.get(HISN_API, timeout=25)
@@ -100,23 +100,23 @@ def get_hisn():
     return data
 
 
-# =========================
-# رسائل الأخطاء
-# =========================
+# =====================================
+# معالجة أخطاء الاتصال
+# =====================================
 def show_error(error):
     if isinstance(error, requests.exceptions.Timeout):
         st.error("انتهت مهلة الاتصال. حاول مرة أخرى.")
     elif isinstance(error, requests.exceptions.ConnectionError):
         st.error("تعذر الاتصال بالإنترنت.")
     elif isinstance(error, requests.exceptions.HTTPError):
-        st.error("خدمة البيانات غير متاحة حاليًا.")
+        st.error("الخدمة غير متاحة حاليًا.")
     else:
         st.error("حدث خطأ أثناء تحميل البيانات.")
 
 
-# =========================
-# القائمة الرئيسية
-# =========================
+# =====================================
+# القائمة الجانبية
+# =====================================
 section = st.sidebar.radio(
     "اختر القسم",
     [
@@ -126,45 +126,47 @@ section = st.sidebar.radio(
     ],
 )
 
-# =========================
+# =====================================
 # قسم القرآن الكريم
-# =========================
+# =====================================
 if section == "القرآن الكريم":
+
     st.header("🕌 القرآن الكريم")
 
     try:
         with st.spinner("جارٍ تحميل السور..."):
             surahs = get_surahs()
 
-        labels = {
+        surah_options = {
             f'{s["number"]}. {s["name"]}': s["number"]
             for s in surahs
         }
 
-        selected = st.selectbox(
+        selected_surah = st.selectbox(
             "اختر السورة",
-            list(labels.keys()),
+            list(surah_options.keys()),
         )
 
-        number = labels[selected]
+        surah_number = surah_options[selected_surah]
 
-        with st.spinner("جارٍ تحميل الآيات..."):
-            surah = get_surah(number)
+        with st.spinner("جارٍ تحميل السورة..."):
+            surah = get_surah(surah_number)
 
         st.subheader(surah["name"])
+
         st.caption(
             f'عدد الآيات: {surah["numberOfAyahs"]}'
         )
 
-        # عرض آيات السورة
+        # عرض جميع الآيات
         verses = []
 
         for ayah in surah["ayahs"]:
-            text = html.escape(ayah["text"])
+            verse_text = html.escape(ayah["text"])
             verse_number = ayah["numberInSurah"]
 
             verses.append(
-                f'{text} ﴿{verse_number}﴾'
+                f"{verse_text} ﴿{verse_number}﴾"
             )
 
         st.markdown(
@@ -174,99 +176,179 @@ if section == "القرآن الكريم":
             unsafe_allow_html=True,
         )
 
-        # =========================
-        # مشغل الصوت
-        # =========================
+        # =====================================
+        # مشغل السورة كاملة بالتتابع
+        # =====================================
         st.divider()
-        st.subheader("🎧 الاستماع إلى القرآن")
+        st.subheader("🎧 استمع إلى السورة كاملة")
 
         audio_ayahs = [
-            ayah for ayah in surah["ayahs"]
+            ayah
+            for ayah in surah["ayahs"]
             if ayah.get("audio")
         ]
 
         if audio_ayahs:
-            audio_map = {
-                ayah["numberInSurah"]: ayah["audio"]
+
+            audio_urls = [
+                ayah["audio"]
                 for ayah in audio_ayahs
-            }
+            ]
 
-            selected_verse = st.selectbox(
-                "اختر رقم الآية",
-                list(audio_map.keys()),
-                format_func=lambda n: f"الآية {n}",
-                key="single_verse",
-            )
-
-            st.audio(audio_map[selected_verse])
-
-            st.markdown("**تشغيل آيات السورة بالتتابع**")
-            st.caption(
-                "اضغط زر التشغيل لبدء التلاوة. "
-                "سيحاول المشغّل الانتقال إلى الآية التالية تلقائيًا."
-            )
-
-            playlist = json.dumps(
-                [a["audio"] for a in audio_ayahs],
+            playlist_json = json.dumps(
+                audio_urls,
                 ensure_ascii=True,
             )
 
             player_html = """
-            <div dir="rtl"
-                 style="font-family:sans-serif;padding:8px">
-              <audio id="player" controls
-                     preload="none"
-                     style="width:100%"></audio>
-              <p id="status">جاهز للتشغيل</p>
+            <!DOCTYPE html>
+            <html lang="ar">
+            <head>
+              <meta charset="UTF-8">
+            </head>
+
+            <body style="
+                font-family:sans-serif;
+                direction:rtl;
+                margin:0;
+                padding:10px;
+            ">
+
+              <h3>مشغل القرآن الكريم</h3>
+
+              <audio
+                id="quranPlayer"
+                controls
+                preload="none"
+                style="width:100%">
+              </audio>
+
+              <p
+                id="quranStatus"
+                aria-live="polite">
+                اضغط تشغيل لبدء السورة
+              </p>
+
+              <button
+                id="startButton"
+                style="
+                  padding:10px 18px;
+                  border:0;
+                  border-radius:8px;
+                  cursor:pointer;
+                ">
+                ▶ تشغيل السورة من البداية
+              </button>
 
               <script>
                 const urls = PLAYLIST_DATA;
-                const player = document.getElementById("player");
-                const status = document.getElementById("status");
+
+                const audio =
+                    document.getElementById("quranPlayer");
+
+                const status =
+                    document.getElementById("quranStatus");
+
+                const startButton =
+                    document.getElementById("startButton");
+
                 let index = 0;
 
                 function loadVerse(i, autoplay) {
-                  if (i >= urls.length) {
-                    status.textContent = "انتهت السورة.";
-                    player.pause();
-                    return;
-                  }
+                    if (i >= urls.length) {
+                        audio.pause();
+                        status.textContent =
+                            "✅ انتهت السورة كاملة";
+                        return;
+                    }
 
-                  index = i;
-                  player.src = urls[index];
-                  status.textContent =
-                    "الآية " + (index + 1) +
-                    " من " + urls.length;
+                    index = i;
+                    audio.src = urls[index];
 
-                  if (autoplay) {
-                    player.play().catch(() => {
-                      status.textContent =
-                        "اضغط تشغيل لمتابعة التلاوة.";
-                    });
-                  }
+                    status.textContent =
+                        "الآية " + (index + 1) +
+                        " من " + urls.length;
+
+                    if (autoplay) {
+                        audio.play().catch(() => {
+                            status.textContent =
+                                "اضغط تشغيل لمتابعة التلاوة";
+                        });
+                    }
                 }
 
-                player.addEventListener("ended", function() {
-                  loadVerse(index + 1, true);
-                });
+                startButton.addEventListener(
+                    "click",
+                    function() {
+                        loadVerse(0, true);
+                    }
+                );
 
-                player.addEventListener("error", function() {
-                  status.textContent =
-                    "تعذر تحميل الصوت. تحقق من الإنترنت.";
-                });
+                audio.addEventListener(
+                    "ended",
+                    function() {
+                        loadVerse(index + 1, true);
+                    }
+                );
+
+                audio.addEventListener(
+                    "error",
+                    function() {
+                        status.textContent =
+                            "تعذر تحميل الصوت. تحقق من الإنترنت.";
+                    }
+                );
+
+                audio.addEventListener(
+                    "play",
+                    function() {
+                        status.textContent =
+                            "جارٍ تشغيل الآية " + (index + 1) +
+                            " من " + urls.length;
+                    }
+                );
 
                 loadVerse(0, false);
               </script>
-            </div>
-            """.replace("PLAYLIST_DATA", playlist)
+
+            </body>
+            </html>
+            """.replace(
+                "PLAYLIST_DATA",
+                playlist_json,
+            )
 
             components.html(
                 player_html,
-                height=115,
+                height=190,
                 scrolling=False,
             )
+
+            st.caption(
+                "ينتقل المشغل تلقائيًا إلى الآية التالية "
+                "حتى نهاية السورة، إذا توفرت ملفات الصوت."
+            )
+
+            # تشغيل آية منفردة عند الحاجة
+            with st.expander("الاستماع إلى آية محددة"):
+                audio_map = {
+                    ayah["numberInSurah"]: ayah["audio"]
+                    for ayah in audio_ayahs
+                }
+
+                selected_verse = st.selectbox(
+                    "رقم الآية",
+                    list(audio_map.keys()),
+                    format_func=lambda n: f"الآية {n}",
+                    key="single_verse",
+                )
+
+                st.audio(audio_map[selected_verse])
+
         else:
-            st.warning("لا تتوفر روابط صوتية لهذه السورة.")
+            st.warning(
+                "لا تتوفر ملفات صوتية لهذه السورة حاليًا."
+            )
 
     except Exception as error:
         show_error(error)
@@ -276,24 +358,26 @@ if section == "القرآن الكريم":
             st.rerun()
 
 
-# =========================
+# =====================================
 # قسم حصن المسلم
-# =========================
+# =====================================
 elif section == "حصن المسلم":
+
     st.header("🤲 حصن المسلم")
 
     try:
         with st.spinner("جارٍ تحميل الأذكار..."):
-            hisn_data = get_hisn()
+            data = get_hisn()
 
         categories = {
             str(name): value
-            for name, value in hisn_data.items()
-            if isinstance(value, (list, dict))
+            for name, value in data.items()
+            if isinstance(value, (dict, list))
         }
 
         if not categories:
             st.warning("لم يتم العثور على أبواب الأذكار.")
+
         else:
             category_name = st.selectbox(
                 "اختر باب الأذكار",
@@ -303,24 +387,32 @@ elif section == "حصن المسلم":
             category = categories[category_name]
 
             if isinstance(category, dict):
-                items = list(category.items())
+                entries = list(category.items())
             else:
-                items = [
+                entries = [
                     (str(i + 1), item)
                     for i, item in enumerate(category)
                 ]
 
-            # استخراج النصوص من تنسيقات JSON الشائعة
             dhikrs = []
 
-            def extract_dhikr(title, item):
+            def extract_dhikr(title, item, depth=0):
+                # حماية من التداخل غير المتوقع
+                if depth > 8:
+                    return
+
                 if isinstance(item, str):
-                    dhikrs.append((title, item, ""))
+                    if item.strip():
+                        dhikrs.append((title, item, ""))
                     return
 
                 if isinstance(item, list):
                     for i, child in enumerate(item, 1):
-                        extract_dhikr(f"{title} {i}", child)
+                        extract_dhikr(
+                            f"{title} {i}",
+                            child,
+                            depth + 1,
+                        )
                     return
 
                 if not isinstance(item, dict):
@@ -342,45 +434,59 @@ elif section == "حصن المسلم":
                 )
 
                 if isinstance(text, str) and text.strip():
-                    title = (
+                    display_title = (
                         item.get("TITLE")
                         or item.get("title")
                         or item.get("name")
                         or title
                     )
+
                     dhikrs.append(
-                        (str(title), text, str(reference))
+                        (
+                            str(display_title),
+                            text,
+                            str(reference),
+                        )
                     )
                 else:
                     for key, child in item.items():
-                        if isinstance(child, (dict, list, str)):
-                            extract_dhikr(str(key), child)
+                        if isinstance(child, (dict, list)):
+                            extract_dhikr(
+                                str(key),
+                                child,
+                                depth + 1,
+                            )
 
-            for title, item in items:
+            for title, item in entries:
                 extract_dhikr(str(title), item)
 
-            # إزالة التكرارات الناتجة عن اختلاف شكل البيانات
+            # إزالة التكرارات
             unique_dhikrs = []
             seen = set()
 
             for item in dhikrs:
-                signature = (item[0], item[1], item[2])
+                signature = tuple(item)
+
                 if signature not in seen:
                     seen.add(signature)
                     unique_dhikrs.append(item)
 
             if unique_dhikrs:
-                choice = st.selectbox(
+                selected_index = st.selectbox(
                     "اختر الذكر",
                     range(len(unique_dhikrs)),
-                    format_func=lambda i: unique_dhikrs[i][0],
+                    format_func=lambda i: (
+                        unique_dhikrs[i][0]
+                    ),
                 )
 
-                title, dhikr_text, reference = unique_dhikrs[choice]
+                title, text, reference = (
+                    unique_dhikrs[selected_index]
+                )
 
                 st.markdown(
                     '<div class="dhikr" dir="rtl">'
-                    + html.escape(dhikr_text).replace(
+                    + html.escape(text).replace(
                         "\n", "<br>"
                     )
                     + "</div>",
@@ -392,21 +498,23 @@ elif section == "حصن المسلم":
 
                 st.text_area(
                     "نص الذكر للنسخ",
-                    value=dhikr_text,
+                    value=text,
                     height=120,
                 )
+
             else:
                 st.warning(
-                    "وصلت البيانات، لكن تعذر استخراج نصوص الأذكار. "
-                    "قد يكون تنسيق الخدمة قد تغير."
+                    "تم الاتصال بمصدر الأذكار، لكن تعذر "
+                    "استخراج النصوص. قد يكون تنسيق البيانات "
+                    "الخارجية قد تغير."
                 )
 
     except Exception as error:
         show_error(error)
+
         st.info(
-            "يعتمد قسم حصن المسلم على خدمة خارجية. "
-            "إذا استمر الخطأ، فقد تكون الخدمة غير متاحة "
-            "أو تغير عنوانها أو تنسيق بياناتها."
+            "يعتمد هذا القسم على خدمة خارجية. "
+            "قد تكون الخدمة غير متاحة أو تغير تنسيق بياناتها."
         )
 
         if st.button("إعادة تحميل الأذكار"):
@@ -414,26 +522,28 @@ elif section == "حصن المسلم":
             st.rerun()
 
 
-# =========================
+# =====================================
 # حول التطبيق
-# =========================
+# =====================================
 else:
+
     st.header("ℹ️ حول التطبيق")
 
     st.markdown("""
-    يوفر التطبيق:
+    ### مميزات التطبيق
 
-    - قراءة سور القرآن الكريم وآياتها.
+    - عرض سور القرآن الكريم وآياتها.
     - الاستماع إلى آية محددة.
-    - تشغيل آيات السورة بالتتابع.
+    - تشغيل السورة بالترتيب حتى نهايتها.
     - تصفح أبواب الأذكار في حصن المسلم.
+    - واجهة عربية متوافقة مع أحجام الشاشات المختلفة.
 
-    **ملاحظات:**
+    ### ملاحظات
 
-    - يحتاج التطبيق إلى الإنترنت لتحميل المحتوى.
-    - قد تتغير خدمات البيانات الخارجية أو تتوقف.
-    - قد يمنع المتصفح تشغيل الصوت تلقائيًا.
-    - يُستحسن مراجعة مصادر الأذكار عند الحاجة إلى التحقق.
+    - يحتاج التطبيق إلى اتصال بالإنترنت.
+    - يعتمد الصوت على خدمة خارجية.
+    - قد تتوقف الخدمة أو تتغير روابط الصوت.
+    - إذا تعذر تحميل إحدى الآيات، فقد يتوقف التسلسل عندها.
     """)
 
-    st.caption("بُني باستخدام Python وStreamlit.")
+    st.caption("تم تطوير التطبيق باستخدام Python وStreamlit.")
