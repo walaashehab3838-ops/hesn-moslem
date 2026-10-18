@@ -18,13 +18,13 @@ QURAN_CLOUD = "https://api.alquran.cloud/v1"
 QURAN_COM = "https://api.quran.com/api/v4"
 
 RECITERS = {
-    "مشاري العفاسي": "ar.alafasy",
-    "عبدالرحمن السديس": "ar.abdurrahmaansudais",
-    "محمود خليل الحصري": "ar.husary",
-    "محمد صديق المنشاوي": "ar.minshawi",
-    "عبدالباسط عبدالصمد": "ar.abdulbasitmurattal",
-    "أبو بكر الشاطري": "ar.shaatree",
-    "ماهر المعيقلي": "ar.mahermuaiqly",
+    "مشاري العفاسي": "Alafasy_128kbps",
+    "عبدالرحمن السديس": "Abdurrahmaan_As-Sudais_192kbps",
+    "محمود خليل الحصري": "Husary_128kbps",
+    "محمد صديق المنشاوي": "Minshawy_Murattal_128kbps",
+    "عبدالباسط عبدالصمد": "Abdul_Basit_Murattal_192kbps",
+    "أبو بكر الشاطري": "Abu_Bakr_Ash-Shaatree_128kbps",
+    "ماهر المعيقلي": "MaherAlMuaiqly128kbps",
 }
 
 SURAH_NAMES = [
@@ -181,7 +181,7 @@ st.markdown(
 )
 
 # ==================================================
-# طلب بيانات من الإنترنت
+# أدوات الاتصال
 # ==================================================
 def fetch_json(url):
     response = requests.get(
@@ -194,9 +194,7 @@ def fetch_json(url):
 
 
 # ==================================================
-# تحميل نص السورة
-# المصدر الأول: Quran.com
-# المصدر الثاني: AlQuran Cloud
+# تحميل نص القرآن
 # ==================================================
 def load_text_from_quran_com(surah_number):
     all_ayahs = []
@@ -222,20 +220,20 @@ def load_text_from_quran_com(surah_number):
                 continue
 
             try:
-                ayah_number = int(verse_key.split(":")[-1])
+                number = int(verse_key.split(":")[-1])
             except ValueError:
                 continue
 
             all_ayahs.append({
                 "text": text,
-                "numberInSurah": ayah_number,
+                "numberInSurah": number,
             })
 
         if len(verses) < 50:
             break
 
     if not all_ayahs:
-        raise ValueError("المصدر البديل لم يُرجع آيات.")
+        raise ValueError("لم يرجع مصدر Quran.com أي آيات.")
 
     return {
         "name": SURAH_NAMES[surah_number - 1],
@@ -243,7 +241,7 @@ def load_text_from_quran_com(surah_number):
     }
 
 
-def load_text_from_alquran_cloud(surah_number):
+def load_text_from_cloud(surah_number):
     result = fetch_json(
         f"{QURAN_CLOUD}/surah/{surah_number}"
     )
@@ -255,7 +253,7 @@ def load_text_from_alquran_cloud(surah_number):
     raw_ayahs = data.get("ayahs", [])
 
     if not raw_ayahs:
-        raise ValueError("لم يتم العثور على آيات في الاستجابة.")
+        raise ValueError("لم يتم العثور على آيات.")
 
     return {
         "name": data.get("name", SURAH_NAMES[surah_number - 1]),
@@ -274,15 +272,13 @@ def load_text_from_alquran_cloud(surah_number):
 def get_surah_text(surah_number):
     errors = []
 
-    # تجربة المصدر الأول
     try:
         return load_text_from_quran_com(surah_number)
     except Exception as exc:
         errors.append(f"Quran.com: {exc}")
 
-    # تجربة المصدر الثاني
     try:
-        return load_text_from_alquran_cloud(surah_number)
+        return load_text_from_cloud(surah_number)
     except Exception as exc:
         errors.append(f"AlQuran Cloud: {exc}")
 
@@ -293,27 +289,22 @@ def get_surah_text(surah_number):
 
 
 # ==================================================
-# تحميل الصوت بشكل مستقل عن النص
+# روابط الصوت المباشرة
 # ==================================================
-@st.cache_data(ttl=1800, show_spinner=False)
-def get_surah_audio(surah_number, edition):
-    try:
-        result = fetch_json(
-            f"{QURAN_CLOUD}/surah/{surah_number}/{edition}"
-        )
+def get_surah_audio(surah_number, reciter_name, ayah_count):
+    folder = RECITERS.get(reciter_name)
 
-        if result.get("code") != 200:
-            return []
-
-        data = result.get("data", {})
-        return [
-            ayah.get("audio", "")
-            for ayah in data.get("ayahs", [])
-            if ayah.get("audio")
-        ]
-
-    except Exception:
+    if not folder:
         return []
+
+    # اسم الملف: رقم السورة 3 أرقام + رقم الآية 3 أرقام
+    return [
+        (
+            f"https://everyayah.com/data/{folder}/"
+            f"{surah_number:03d}{ayah_number:03d}.mp3"
+        )
+        for ayah_number in range(1, ayah_count + 1)
+    ]
 
 
 # ==================================================
@@ -358,7 +349,6 @@ AZKAR = [
     },
 ]
 
-
 # ==================================================
 # حالة الصفحات
 # ==================================================
@@ -375,11 +365,12 @@ if "selected_surah" not in st.session_state:
 def open_quran(reciter=None):
     if reciter in RECITERS:
         st.session_state.selected_reciter = reciter
+
     st.session_state.page = "القرآن الكريم"
 
 
 # ==================================================
-# القائمة الجانبية
+# الشريط الجانبي
 # ==================================================
 with st.sidebar:
     st.markdown(
@@ -420,7 +411,7 @@ with st.sidebar:
 
 
 # ==================================================
-# رأس التطبيق
+# رأس الصفحة
 # ==================================================
 st.markdown(
     """
@@ -524,7 +515,7 @@ elif st.session_state.page == "القرآن الكريم":
         for i, name in enumerate(SURAH_NAMES, start=1)
     ]
 
-    selected_index = max(
+    default_index = max(
         0,
         min(st.session_state.selected_surah - 1, 113),
     )
@@ -535,7 +526,7 @@ elif st.session_state.page == "القرآن الكريم":
         selected_label = st.selectbox(
             "اختر السورة",
             surah_labels,
-            index=selected_index,
+            index=default_index,
             key="surah_select",
         )
 
@@ -560,7 +551,6 @@ elif st.session_state.page == "القرآن الكريم":
 
     if st.button("🔄 إعادة تحميل الآيات", key="reload_text"):
         get_surah_text.clear()
-        get_surah_audio.clear()
         st.rerun()
 
     with st.spinner("جارٍ تحميل نص القرآن الكريم..."):
@@ -569,12 +559,12 @@ elif st.session_state.page == "القرآن الكريم":
     if surah_data and surah_data.get("ayahs"):
         st.success("تم تحميل نص السورة.")
 
-        # الصوت لا يمنع عرض الآيات
-        with st.spinner("جارٍ تجهيز التلاوة..."):
-            audio_urls = get_surah_audio(
-                surah_number,
-                RECITERS[selected_reciter],
-            )
+        # مشغل الصوت المباشر
+        audio_urls = get_surah_audio(
+            surah_number,
+            selected_reciter,
+            len(surah_data["ayahs"]),
+        )
 
         if audio_urls:
             safe_urls = json.dumps(
@@ -594,12 +584,14 @@ elif st.session_state.page == "القرآن الكريم":
                     font-family:Arial,sans-serif;
                 ">
                     <h3 style="color:#f2d780;">
-                        ▶️ استماع إلى السورة
+                        ▶️ استماع إلى سورة {html.escape(SURAH_NAMES[surah_number - 1])}
                     </h3>
 
-                    <audio id="quranPlayer" controls
+                    <audio id="quranPlayer"
+                           controls
                            preload="metadata"
-                           style="width:100%;"></audio>
+                           style="width:100%;">
+                    </audio>
 
                     <p id="audioStatus" style="color:#f2d780;">
                         اضغط تشغيل لبدء التلاوة
@@ -628,11 +620,12 @@ elif st.session_state.page == "القرآن الكريم":
                     current = Math.max(0, Math.min(index, audioUrls.length - 1));
                     player.src = audioUrls[current];
                     status.textContent =
-                        "المقطع " + (current + 1) + " من " + audioUrls.length;
+                        "الآية " + (current + 1) + " من " + audioUrls.length;
 
                     if (shouldPlay) {{
                         player.play().catch(() => {{
-                            status.textContent = "اضغط تشغيل لبدء الاستماع";
+                            status.textContent =
+                                "تعذّر بدء التشغيل تلقائيًا؛ اضغط تشغيل.";
                         }});
                     }}
                 }}
@@ -641,13 +634,13 @@ elif st.session_state.page == "القرآن الكريم":
                     if (current < audioUrls.length - 1) {{
                         loadAyah(current + 1, true);
                     }} else {{
-                        status.textContent = "انتهت التلاوة";
+                        status.textContent = "انتهت تلاوة السورة.";
                     }}
                 }});
 
                 player.addEventListener("error", () => {{
                     status.textContent =
-                        "تعذر تشغيل المقطع. جرّب قارئًا آخر.";
+                        "تعذّر تحميل ملف الصوت. جرّب قارئًا آخر.";
                 }});
 
                 document.getElementById("previousAyah").onclick =
@@ -659,13 +652,8 @@ elif st.session_state.page == "القرآن الكريم":
                 loadAyah(0, false);
                 </script>
                 """,
-                height=220,
+                height=230,
                 scrolling=False,
-            )
-        else:
-            st.warning(
-                "نص القرآن ظاهر، لكن تعذّر تحميل الصوت حاليًا. "
-                "يمكنك قراءة الآيات وتجربة قارئ آخر."
             )
 
         st.markdown("---")
@@ -699,17 +687,21 @@ elif st.session_state.page == "القرآن الكريم":
             )
 
     else:
-        st.error("لم نتمكن من تحميل نص الآيات من أي من المصدرين.")
+        st.error("تعذّر تحميل نص الآيات من المصدرين.")
 
-        error_detail = surah_data.get("error", "") if surah_data else ""
+        error_detail = (
+            surah_data.get("error", "")
+            if isinstance(surah_data, dict)
+            else ""
+        )
 
         if error_detail:
             with st.expander("عرض تفاصيل الخطأ"):
                 st.code(error_detail)
 
         st.info(
-            "افتح تفاصيل الخطأ إذا استمر العطل؛ "
-            "قد تكون الخدمة غير متاحة أو أن التطبيق لا يستطيع الوصول إليها."
+            "جرّب إعادة التحميل بعد قليل، أو افتح تفاصيل الخطأ "
+            "إذا استمرت المشكلة."
         )
 
 
