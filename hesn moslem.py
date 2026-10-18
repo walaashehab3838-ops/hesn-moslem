@@ -89,9 +89,9 @@ AZKAR = [
 ]
 
 
-# --------------------------------------------------
-# التصميم والألوان
-# --------------------------------------------------
+# =========================
+# التصميم
+# =========================
 
 st.markdown(
     """
@@ -172,7 +172,6 @@ st.markdown(
         font-size: 25px;
         line-height: 2.1;
         overflow-wrap: anywhere;
-        word-break: normal;
     }
 
     .ayah-number {
@@ -259,9 +258,9 @@ st.markdown(
 )
 
 
-# --------------------------------------------------
-# تحميل القرآن الكريم
-# --------------------------------------------------
+# =========================
+# تحميل القرآن
+# =========================
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_surah(number):
@@ -270,14 +269,12 @@ def load_surah(number):
         timeout=25,
     )
     response.raise_for_status()
-
     payload = response.json()
 
     if payload.get("code") != 200:
         raise ValueError("لم ينجح تحميل السورة.")
 
-    data = payload.get("data", {})
-    ayahs = data.get("ayahs", [])
+    ayahs = payload.get("data", {}).get("ayahs", [])
 
     if not ayahs:
         raise ValueError("لم يتم العثور على آيات.")
@@ -294,19 +291,15 @@ def load_surah(number):
 
 def build_audio_urls(surah_number, reciter, count):
     folder = RECITERS[reciter]
-
     return [
-        (
-            f"https://everyayah.com/data/{folder}/"
-            f"{surah_number:03d}{ayah_number:03d}.mp3"
-        )
+        f"https://everyayah.com/data/{folder}/{surah_number:03d}{ayah_number:03d}.mp3"
         for ayah_number in range(1, count + 1)
     ]
 
 
-# --------------------------------------------------
+# =========================
 # حالة التطبيق
-# --------------------------------------------------
+# =========================
 
 if "page" not in st.session_state:
     st.session_state.page = "الرئيسية"
@@ -318,9 +311,9 @@ if "surah" not in st.session_state:
     st.session_state.surah = 1
 
 
-# --------------------------------------------------
+# =========================
 # القائمة الجانبية
-# --------------------------------------------------
+# =========================
 
 with st.sidebar:
     st.markdown(
@@ -344,14 +337,12 @@ with st.sidebar:
     st.markdown("### 🎙️ القارئ المفضل")
 
     reciter_names = list(RECITERS.keys())
-
     selected_sidebar_reciter = st.selectbox(
         "اختر القارئ",
         reciter_names,
         index=reciter_names.index(st.session_state.reciter),
         key="sidebar_reciter",
     )
-
     st.session_state.reciter = selected_sidebar_reciter
 
     if st.button("▶️ استماع إلى القرآن", key="sidebar_listen"):
@@ -360,9 +351,9 @@ with st.sidebar:
         st.rerun()
 
 
-# --------------------------------------------------
+# =========================
 # رأس الصفحة
-# --------------------------------------------------
+# =========================
 
 st.markdown(
     """
@@ -376,9 +367,9 @@ st.markdown(
 )
 
 
-# --------------------------------------------------
+# =========================
 # الصفحة الرئيسية
-# --------------------------------------------------
+# =========================
 
 if st.session_state.page == "الرئيسية":
     st.markdown(
@@ -464,9 +455,9 @@ if st.session_state.page == "الرئيسية":
             st.rerun()
 
 
-# --------------------------------------------------
+# =========================
 # صفحة القرآن الكريم
-# --------------------------------------------------
+# =========================
 
 elif st.session_state.page == "القرآن الكريم":
     st.markdown(
@@ -485,19 +476,16 @@ elif st.session_state.page == "القرآن الكريم":
         index=max(0, min(st.session_state.surah - 1, 113)),
         key="surah_choice",
     )
-
     surah_number = surah_labels.index(selected_label) + 1
     st.session_state.surah = surah_number
 
     reciter_names = list(RECITERS.keys())
-
     selected_reciter = st.selectbox(
         "اختر القارئ",
         reciter_names,
         index=reciter_names.index(st.session_state.reciter),
         key="quran_reciter",
     )
-
     st.session_state.reciter = selected_reciter
 
     st.markdown(
@@ -520,7 +508,6 @@ elif st.session_state.page == "القرآن الكريم":
             selected_reciter,
             len(ayahs),
         )
-
         safe_urls = json.dumps(urls, ensure_ascii=True)
         safe_surah_name = html.escape(SURAHS[surah_number - 1])
 
@@ -539,42 +526,28 @@ elif st.session_state.page == "القرآن الكريم":
                     ▶️ استماع إلى سورة {safe_surah_name}
                 </h3>
 
-                <audio
-                    id="quran-player"
-                    controls
-                    preload="metadata"
-                    style="display:block;width:100%;min-height:45px;"
-                ></audio>
+                <audio id="quran-player" controls preload="metadata"
+                    style="display:block;width:100%;min-height:45px;">
+                </audio>
 
-                <p
-                    id="quran-status"
-                    style="color:#f2d780;"
-                >
+                <p id="quran-status" style="color:#f2d780;">
                     اضغط تشغيل لبدء التلاوة
                 </p>
 
                 <div style="display:flex;gap:10px;">
-                    <button
-                        id="prev-ayah"
-                        type="button"
-                        style="
-                            flex:1;min-height:48px;padding:10px;
-                            border:0;border-radius:10px;
-                            background:#f0d77f;color:#102f23;
-                            font-size:16px;font-weight:bold;cursor:pointer;
-                        "
-                    >الآية السابقة</button>
+                    <button id="prev-ayah" type="button" style="
+                        flex:1;min-height:48px;padding:10px;
+                        border:0;border-radius:10px;
+                        background:#f0d77f;color:#102f23;
+                        font-size:16px;font-weight:bold;cursor:pointer;
+                    ">الآية السابقة</button>
 
-                    <button
-                        id="next-ayah"
-                        type="button"
-                        style="
-                            flex:1;min-height:48px;padding:10px;
-                            border:0;border-radius:10px;
-                            background:#f0d77f;color:#102f23;
-                            font-size:16px;font-weight:bold;cursor:pointer;
-                        "
-                    >الآية التالية</button>
+                    <button id="next-ayah" type="button" style="
+                        flex:1;min-height:48px;padding:10px;
+                        border:0;border-radius:10px;
+                        background:#f0d77f;color:#102f23;
+                        font-size:16px;font-weight:bold;cursor:pointer;
+                    ">الآية التالية</button>
                 </div>
             </div>
 
@@ -632,7 +605,6 @@ elif st.session_state.page == "القرآن الكريم":
         )
 
         st.markdown("---")
-
         st.markdown(
             "<div class='section-title'>آيات السورة</div>",
             unsafe_allow_html=True,
@@ -648,18 +620,16 @@ elif st.session_state.page == "القرآن الكريم":
                 unsafe_allow_html=True,
             )
 
-        # عرض نص الآية ورقمها داخل المربع نفسه
+        # رقم الآية والنص داخل نفس المربع
         for ayah in ayahs:
             ayah_text = html.escape(ayah["text"])
             ayah_number = ayah["number"]
 
             st.markdown(
                 f"""
-                <div class="ayah-card">
-                    {ayah_text}
-                    <span class="ayah-number">
-                        ﴿ {ayah_number} ﴾
-                    </span>
+                <div class="ayah-card" dir="rtl">
+                    <span>{ayah_text}</span>
+                    <span class="ayah-number">﴿ {ayah_number} ﴾</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -678,9 +648,9 @@ elif st.session_state.page == "القرآن الكريم":
             st.rerun()
 
 
-# --------------------------------------------------
+# =========================
 # صفحة الأذكار
-# --------------------------------------------------
+# =========================
 
 elif st.session_state.page == "الأذكار":
     st.markdown(
@@ -701,7 +671,7 @@ elif st.session_state.page == "الأذكار":
 
     shown_count = 0
 
-    for index, zikr in enumerate(AZKAR):
+    for zikr in AZKAR:
         if (
             category != "جميع الأذكار"
             and zikr["category"] != category
@@ -716,9 +686,7 @@ elif st.session_state.page == "الأذكار":
                 <div style="color:#f2d780;font-weight:bold;">
                     {html.escape(zikr["title"])}
                 </div>
-
                 <div>{html.escape(zikr["text"])}</div>
-
                 <div style="font-size:16px;color:#f2d780;">
                     التكرار: {html.escape(zikr["count"])}
                 </div>
@@ -731,23 +699,12 @@ elif st.session_state.page == "الأذكار":
         st.info("لا توجد أذكار في هذا القسم حاليًا.")
 
 
-# --------------------------------------------------
+# =========================
 # تذييل الموقع
-# --------------------------------------------------
+# =========================
 
 st.markdown(
     """
     <div class="footer">
         <div style="font-size:18px;font-weight:bold;">
-            ☪ القرآن الكريم وحصن المسلم ☪
-        </div>
-        <div style="margin-top:8px;">
-            تقبّل الله منا ومنكم صالح الأعمال
-        </div>
-        <div style="margin-top:12px;font-size:14px;">
-            OMAR MELIGY
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+        
