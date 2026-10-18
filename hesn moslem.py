@@ -50,8 +50,47 @@ SURAH_NAMES = [
     "المسد", "الإخلاص", "الفلق", "الناس",
 ]
 
+AZKAR = [
+    {
+        "category": "أذكار الصباح",
+        "title": "ذكر الصباح",
+        "text": "أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.",
+        "count": "مرة واحدة",
+    },
+    {
+        "category": "أذكار المساء",
+        "title": "ذكر المساء",
+        "text": "أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.",
+        "count": "مرة واحدة",
+    },
+    {
+        "category": "أذكار متنوعة",
+        "title": "التسبيح",
+        "text": "سبحان الله وبحمده.",
+        "count": "مائة مرة",
+    },
+    {
+        "category": "أذكار متنوعة",
+        "title": "الاستغفار",
+        "text": "أستغفر الله وأتوب إليه.",
+        "count": "يُكثر منه",
+    },
+    {
+        "category": "أذكار متنوعة",
+        "title": "سيد الاستغفار",
+        "text": "اللهم أنت ربي لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك عليّ، وأبوء بذنبي، فاغفر لي فإنه لا يغفر الذنوب إلا أنت.",
+        "count": "مرة صباحًا أو مساءً",
+    },
+    {
+        "category": "أذكار متنوعة",
+        "title": "الصلاة على النبي ﷺ",
+        "text": "اللهم صل وسلم على نبينا محمد.",
+        "count": "يُكثر منها",
+    },
+]
+
 # ==================================================
-# التصميم والألوان وإصلاح ظهور نصوص الأزرار
+# تنسيق التطبيق
 # ==================================================
 st.markdown(
     """
@@ -82,7 +121,7 @@ st.markdown(
 
     .hero {
         text-align: center;
-        padding: 28px 12px;
+        padding: 26px 12px;
         border: 1px solid #c7a84b;
         border-radius: 22px;
         background: linear-gradient(135deg, #0b5038, #063323);
@@ -92,14 +131,14 @@ st.markdown(
     .hero h1 {
         color: #f2d780;
         font-family: 'Amiri', serif;
-        font-size: 38px;
+        font-size: 36px;
     }
 
     .section-title {
         color: #f2d780;
         font-family: 'Amiri', serif;
         text-align: center;
-        font-size: 29px;
+        font-size: 28px;
         margin: 20px 0;
     }
 
@@ -148,38 +187,48 @@ st.markdown(
         line-height: 2;
     }
 
-    /* إصلاح لون النص داخل الأزرار */
-    div.stButton > button {
+    /* إصلاح نص الأزرار */
+    div[data-testid="stButton"] > button {
         width: 100% !important;
-        min-height: 46px !important;
-        background-color: #c8a74d !important;
-        border: 1px solid #f2d780 !important;
+        min-height: 48px !important;
+        background: #f0d77f !important;
+        border: 2px solid #c5a34a !important;
         border-radius: 12px !important;
         opacity: 1 !important;
+        box-shadow: none !important;
     }
 
-    div.stButton > button,
-    div.stButton > button *,
-    div.stButton > button p,
-    div.stButton > button span,
-    div.stButton > button div {
+    div[data-testid="stButton"] > button,
+    div[data-testid="stButton"] > button *,
+    div[data-testid="stButton"] > button p,
+    div[data-testid="stButton"] > button span,
+    div[data-testid="stButton"] > button div {
         color: #102f23 !important;
+        -webkit-text-fill-color: #102f23 !important;
         font-family: 'Cairo', sans-serif !important;
-        font-size: 15px !important;
+        font-size: 16px !important;
         font-weight: 800 !important;
         opacity: 1 !important;
         visibility: visible !important;
+        text-shadow: none !important;
     }
 
-    div.stButton > button:hover {
-        background-color: #f0d77f !important;
-        border-color: #fff0b5 !important;
+    div[data-testid="stButton"] > button:hover {
+        background: #fff2b5 !important;
+        border-color: #f2d780 !important;
     }
 
-    div.stButton > button:focus {
+    div[data-testid="stButton"] > button:focus,
+    div[data-testid="stButton"] > button:active {
         color: #102f23 !important;
-        border-color: #fff0b5 !important;
-        box-shadow: 0 0 0 2px #c5a34a !important;
+        -webkit-text-fill-color: #102f23 !important;
+        border-color: #fff2b5 !important;
+    }
+
+    div[data-testid="stButton"] > button:disabled {
+        opacity: 1 !important;
+        color: #102f23 !important;
+        -webkit-text-fill-color: #102f23 !important;
     }
 
     .footer {
@@ -196,7 +245,7 @@ st.markdown(
 )
 
 # ==================================================
-# تحميل نص القرآن الكريم
+# الاتصال بمصادر القرآن
 # ==================================================
 def fetch_json(url):
     response = requests.get(
@@ -292,15 +341,9 @@ def get_surah_text(surah_number):
     except Exception as exc:
         errors.append(f"AlQuran Cloud: {exc}")
 
-    return {
-        "error": "\n".join(errors),
-        "ayahs": [],
-    }
+    return {"error": "\n".join(errors), "ayahs": []}
 
 
-# ==================================================
-# روابط الصوت
-# ==================================================
 def get_surah_audio(surah_number, reciter_name, ayah_count):
     folder = RECITERS.get(reciter_name)
 
@@ -308,58 +351,13 @@ def get_surah_audio(surah_number, reciter_name, ayah_count):
         return []
 
     return [
-        (
-            f"https://everyayah.com/data/{folder}/"
-            f"{surah_number:03d}{ayah_number:03d}.mp3"
-        )
+        f"https://everyayah.com/data/{folder}/{surah_number:03d}{ayah_number:03d}.mp3"
         for ayah_number in range(1, ayah_count + 1)
     ]
 
 
 # ==================================================
-# الأذكار
-# ==================================================
-AZKAR = [
-    {
-        "category": "أذكار الصباح",
-        "title": "ذكر الصباح",
-        "text": "أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.",
-        "count": "مرة واحدة",
-    },
-    {
-        "category": "أذكار المساء",
-        "title": "ذكر المساء",
-        "text": "أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.",
-        "count": "مرة واحدة",
-    },
-    {
-        "category": "أذكار متنوعة",
-        "title": "التسبيح",
-        "text": "سبحان الله وبحمده.",
-        "count": "مائة مرة",
-    },
-    {
-        "category": "أذكار متنوعة",
-        "title": "الاستغفار",
-        "text": "أستغفر الله وأتوب إليه.",
-        "count": "يُكثر منه",
-    },
-    {
-        "category": "أذكار متنوعة",
-        "title": "سيد الاستغفار",
-        "text": "اللهم أنت ربي لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك عليّ، وأبوء بذنبي، فاغفر لي فإنه لا يغفر الذنوب إلا أنت.",
-        "count": "مرة صباحًا أو مساءً",
-    },
-    {
-        "category": "أذكار متنوعة",
-        "title": "الصلاة على النبي ﷺ",
-        "text": "اللهم صل وسلم على نبينا محمد.",
-        "count": "يُكثر منها",
-    },
-]
-
-# ==================================================
-# حالة التطبيق
+# الحالة الافتراضية
 # ==================================================
 if "page" not in st.session_state:
     st.session_state.page = "الرئيسية"
@@ -403,7 +401,6 @@ with st.sidebar:
         index=reciter_names.index(st.session_state.selected_reciter),
         key="sidebar_reciter",
     )
-
     st.session_state.selected_reciter = sidebar_reciter
 
     if st.button("▶️ استماع للقرآن", key="sidebar_listen"):
@@ -413,7 +410,7 @@ with st.sidebar:
 
 
 # ==================================================
-# رأس التطبيق
+# رأس الصفحة
 # ==================================================
 st.markdown(
     """
@@ -428,7 +425,7 @@ st.markdown(
 
 
 # ==================================================
-# الرئيسية
+# الصفحة الرئيسية
 # ==================================================
 if st.session_state.page == "الرئيسية":
     st.markdown(
@@ -506,7 +503,7 @@ if st.session_state.page == "الرئيسية":
 
 
 # ==================================================
-# القرآن الكريم
+# صفحة القرآن الكريم
 # ==================================================
 elif st.session_state.page == "القرآن الكريم":
     st.markdown(
@@ -590,11 +587,8 @@ elif st.session_state.page == "القرآن الكريم":
                         ▶️ استماع إلى سورة {html.escape(SURAH_NAMES[surah_number - 1])}
                     </h3>
 
-                    <audio id="quranPlayer"
-                           controls
-                           preload="metadata"
-                           style="width:100%;">
-                    </audio>
+                    <audio id="quranPlayer" controls preload="metadata"
+                           style="width:100%;"></audio>
 
                     <p id="audioStatus" style="color:#f2d780;">
                         اضغط تشغيل لبدء التلاوة
@@ -627,8 +621,7 @@ elif st.session_state.page == "القرآن الكريم":
 
                     if (shouldPlay) {{
                         player.play().catch(() => {{
-                            status.textContent =
-                                "اضغط زر التشغيل لبدء التلاوة.";
+                            status.textContent = "اضغط تشغيل لبدء التلاوة.";
                         }});
                     }}
                 }}
@@ -642,8 +635,7 @@ elif st.session_state.page == "القرآن الكريم":
                 }});
 
                 player.addEventListener("error", () => {{
-                    status.textContent =
-                        "تعذّر تحميل ملف الصوت. جرّب قارئًا آخر.";
+                    status.textContent = "تعذّر تحميل الصوت. جرّب قارئًا آخر.";
                 }});
 
                 document.getElementById("previousAyah").onclick =
@@ -674,15 +666,12 @@ elif st.session_state.page == "القرآن الكريم":
             )
 
         for ayah in surah_data["ayahs"]:
-            ayah_text = html.escape(ayah.get("text", ""))
-            ayah_number = ayah.get("numberInSurah", "")
-
             st.markdown(
                 f"""
                 <div class="ayah-card">
-                    {ayah_text}
+                    {html.escape(ayah.get("text", ""))}
                     <span style="color:#e8c65f;font-size:16px;">
-                        ﴿ {ayah_number} ﴾
+                        ﴿ {ayah.get("numberInSurah", "")} ﴾
                     </span>
                 </div>
                 """,
@@ -692,21 +681,15 @@ elif st.session_state.page == "القرآن الكريم":
     else:
         st.error("تعذّر تحميل نص الآيات من المصدرين.")
 
-        error_detail = (
-            surah_data.get("error", "")
-            if isinstance(surah_data, dict)
-            else ""
-        )
-
-        if error_detail:
+        if isinstance(surah_data, dict) and surah_data.get("error"):
             with st.expander("عرض تفاصيل الخطأ"):
-                st.code(error_detail)
+                st.code(surah_data["error"])
 
         st.info("جرّب إعادة التحميل بعد قليل.")
 
 
 # ==================================================
-# الأذكار
+# صفحة الأذكار
 # ==================================================
 elif st.session_state.page == "الأذكار":
     st.markdown(
