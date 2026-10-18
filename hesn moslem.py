@@ -5,9 +5,6 @@ import html
 import json
 import streamlit.components.v1 as components
 
-# ==================================================
-# إعدادات التطبيق
-# ==================================================
 st.set_page_config(
     page_title="القرآن الكريم وحصن المسلم",
     page_icon="📖",
@@ -54,7 +51,7 @@ SURAH_NAMES = [
 ]
 
 # ==================================================
-# التصميم
+# التصميم والألوان وإصلاح ظهور نصوص الأزرار
 # ==================================================
 st.markdown(
     """
@@ -151,20 +148,38 @@ st.markdown(
         line-height: 2;
     }
 
+    /* إصلاح لون النص داخل الأزرار */
     div.stButton > button {
-        width: 100%;
-        border: 1px solid #e0c260;
-        border-radius: 12px;
-        background: #c8a74d;
-        color: #103d2b;
-        font-weight: 800;
-        min-height: 43px;
+        width: 100% !important;
+        min-height: 46px !important;
+        background-color: #c8a74d !important;
+        border: 1px solid #f2d780 !important;
+        border-radius: 12px !important;
+        opacity: 1 !important;
+    }
+
+    div.stButton > button,
+    div.stButton > button *,
+    div.stButton > button p,
+    div.stButton > button span,
+    div.stButton > button div {
+        color: #102f23 !important;
+        font-family: 'Cairo', sans-serif !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
     }
 
     div.stButton > button:hover {
-        background: #f0d77f;
-        color: #063d2c;
-        border-color: #f0d77f;
+        background-color: #f0d77f !important;
+        border-color: #fff0b5 !important;
+    }
+
+    div.stButton > button:focus {
+        color: #102f23 !important;
+        border-color: #fff0b5 !important;
+        box-shadow: 0 0 0 2px #c5a34a !important;
     }
 
     .footer {
@@ -181,7 +196,7 @@ st.markdown(
 )
 
 # ==================================================
-# أدوات الاتصال
+# تحميل نص القرآن الكريم
 # ==================================================
 def fetch_json(url):
     response = requests.get(
@@ -193,9 +208,6 @@ def fetch_json(url):
     return response.json()
 
 
-# ==================================================
-# تحميل نص القرآن
-# ==================================================
 def load_text_from_quran_com(surah_number):
     all_ayahs = []
 
@@ -233,7 +245,7 @@ def load_text_from_quran_com(surah_number):
             break
 
     if not all_ayahs:
-        raise ValueError("لم يرجع مصدر Quran.com أي آيات.")
+        raise ValueError("لم يرجع المصدر أي آيات.")
 
     return {
         "name": SURAH_NAMES[surah_number - 1],
@@ -242,12 +254,10 @@ def load_text_from_quran_com(surah_number):
 
 
 def load_text_from_cloud(surah_number):
-    result = fetch_json(
-        f"{QURAN_CLOUD}/surah/{surah_number}"
-    )
+    result = fetch_json(f"{QURAN_CLOUD}/surah/{surah_number}")
 
     if result.get("code") != 200:
-        raise ValueError("مصدر القرآن الأساسي لم يُرجع استجابة ناجحة.")
+        raise ValueError("مصدر القرآن لم يُرجع استجابة ناجحة.")
 
     data = result.get("data", {})
     raw_ayahs = data.get("ayahs", [])
@@ -289,7 +299,7 @@ def get_surah_text(surah_number):
 
 
 # ==================================================
-# روابط الصوت المباشرة
+# روابط الصوت
 # ==================================================
 def get_surah_audio(surah_number, reciter_name, ayah_count):
     folder = RECITERS.get(reciter_name)
@@ -297,7 +307,6 @@ def get_surah_audio(surah_number, reciter_name, ayah_count):
     if not folder:
         return []
 
-    # اسم الملف: رقم السورة 3 أرقام + رقم الآية 3 أرقام
     return [
         (
             f"https://everyayah.com/data/{folder}/"
@@ -350,7 +359,7 @@ AZKAR = [
 ]
 
 # ==================================================
-# حالة الصفحات
+# حالة التطبيق
 # ==================================================
 if "page" not in st.session_state:
     st.session_state.page = "الرئيسية"
@@ -362,15 +371,8 @@ if "selected_surah" not in st.session_state:
     st.session_state.selected_surah = 1
 
 
-def open_quran(reciter=None):
-    if reciter in RECITERS:
-        st.session_state.selected_reciter = reciter
-
-    st.session_state.page = "القرآن الكريم"
-
-
 # ==================================================
-# الشريط الجانبي
+# القائمة الجانبية
 # ==================================================
 with st.sidebar:
     st.markdown(
@@ -411,7 +413,7 @@ with st.sidebar:
 
 
 # ==================================================
-# رأس الصفحة
+# رأس التطبيق
 # ==================================================
 st.markdown(
     """
@@ -426,7 +428,7 @@ st.markdown(
 
 
 # ==================================================
-# الصفحة الرئيسية
+# الرئيسية
 # ==================================================
 if st.session_state.page == "الرئيسية":
     st.markdown(
@@ -460,12 +462,14 @@ if st.session_state.page == "الرئيسية":
                 )
 
                 if st.button("📖 قراءة القرآن", key=f"read_{index}"):
-                    open_quran(name)
+                    st.session_state.selected_reciter = name
+                    st.session_state.page = "القرآن الكريم"
                     st.rerun()
 
                 if st.button("▶️ استماع", key=f"listen_{index}"):
-                    open_quran(name)
+                    st.session_state.selected_reciter = name
                     st.session_state.selected_surah = 1
+                    st.session_state.page = "القرآن الكريم"
                     st.rerun()
 
     col1, col2 = st.columns(2)
@@ -502,7 +506,7 @@ if st.session_state.page == "الرئيسية":
 
 
 # ==================================================
-# صفحة القرآن الكريم
+# القرآن الكريم
 # ==================================================
 elif st.session_state.page == "القرآن الكريم":
     st.markdown(
@@ -559,7 +563,6 @@ elif st.session_state.page == "القرآن الكريم":
     if surah_data and surah_data.get("ayahs"):
         st.success("تم تحميل نص السورة.")
 
-        # مشغل الصوت المباشر
         audio_urls = get_surah_audio(
             surah_number,
             selected_reciter,
@@ -625,7 +628,7 @@ elif st.session_state.page == "القرآن الكريم":
                     if (shouldPlay) {{
                         player.play().catch(() => {{
                             status.textContent =
-                                "تعذّر بدء التشغيل تلقائيًا؛ اضغط تشغيل.";
+                                "اضغط زر التشغيل لبدء التلاوة.";
                         }});
                     }}
                 }}
@@ -699,14 +702,11 @@ elif st.session_state.page == "القرآن الكريم":
             with st.expander("عرض تفاصيل الخطأ"):
                 st.code(error_detail)
 
-        st.info(
-            "جرّب إعادة التحميل بعد قليل، أو افتح تفاصيل الخطأ "
-            "إذا استمرت المشكلة."
-        )
+        st.info("جرّب إعادة التحميل بعد قليل.")
 
 
 # ==================================================
-# صفحة الأذكار
+# الأذكار
 # ==================================================
 elif st.session_state.page == "الأذكار":
     st.markdown(
