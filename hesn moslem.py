@@ -90,7 +90,7 @@ AZKAR = [
 ]
 
 # ==================================================
-# تنسيق التطبيق
+# التصميم
 # ==================================================
 st.markdown(
     """
@@ -187,30 +187,66 @@ st.markdown(
         line-height: 2;
     }
 
-    /* إصلاح نص الأزرار */
-    div[data-testid="stButton"] > button {
+    /* توسيط الزر ومحتواه */
+    div[data-testid="stButton"] {
         width: 100% !important;
-        min-height: 48px !important;
+        min-width: 0 !important;
+    }
+
+    div[data-testid="stButton"] > button {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 52px !important;
+        padding: 10px 14px !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
         background: #f0d77f !important;
         border: 2px solid #c5a34a !important;
         border-radius: 12px !important;
         opacity: 1 !important;
-        box-shadow: none !important;
     }
 
-    div[data-testid="stButton"] > button,
-    div[data-testid="stButton"] > button *,
+    div[data-testid="stButton"] > button > div {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
     div[data-testid="stButton"] > button p,
     div[data-testid="stButton"] > button span,
-    div[data-testid="stButton"] > button div {
+    div[data-testid="stButton"] > button div,
+    div[data-testid="stButton"] > button * {
         color: #102f23 !important;
         -webkit-text-fill-color: #102f23 !important;
         font-family: 'Cairo', sans-serif !important;
         font-size: 16px !important;
         font-weight: 800 !important;
+        line-height: 1.5 !important;
         opacity: 1 !important;
         visibility: visible !important;
         text-shadow: none !important;
+        box-sizing: border-box !important;
+    }
+
+    div[data-testid="stButton"] > button p {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        white-space: normal !important;
+        text-align: center !important;
+        overflow: visible !important;
+        overflow-wrap: anywhere !important;
     }
 
     div[data-testid="stButton"] > button:hover {
@@ -219,16 +255,11 @@ st.markdown(
     }
 
     div[data-testid="stButton"] > button:focus,
-    div[data-testid="stButton"] > button:active {
-        color: #102f23 !important;
-        -webkit-text-fill-color: #102f23 !important;
-        border-color: #fff2b5 !important;
-    }
-
+    div[data-testid="stButton"] > button:active,
     div[data-testid="stButton"] > button:disabled {
-        opacity: 1 !important;
         color: #102f23 !important;
         -webkit-text-fill-color: #102f23 !important;
+        opacity: 1 !important;
     }
 
     .footer {
@@ -245,7 +276,7 @@ st.markdown(
 )
 
 # ==================================================
-# الاتصال بمصادر القرآن
+# تحميل نص القرآن
 # ==================================================
 def fetch_json(url):
     response = requests.get(
@@ -344,6 +375,9 @@ def get_surah_text(surah_number):
     return {"error": "\n".join(errors), "ayahs": []}
 
 
+# ==================================================
+# الصوت
+# ==================================================
 def get_surah_audio(surah_number, reciter_name, ayah_count):
     folder = RECITERS.get(reciter_name)
 
@@ -357,7 +391,7 @@ def get_surah_audio(surah_number, reciter_name, ayah_count):
 
 
 # ==================================================
-# الحالة الافتراضية
+# حالة الصفحات
 # ==================================================
 if "page" not in st.session_state:
     st.session_state.page = "الرئيسية"
@@ -425,7 +459,7 @@ st.markdown(
 
 
 # ==================================================
-# الصفحة الرئيسية
+# الرئيسية
 # ==================================================
 if st.session_state.page == "الرئيسية":
     st.markdown(
@@ -503,7 +537,7 @@ if st.session_state.page == "الرئيسية":
 
 
 # ==================================================
-# صفحة القرآن الكريم
+# القرآن الكريم
 # ==================================================
 elif st.session_state.page == "القرآن الكريم":
     st.markdown(
@@ -689,7 +723,7 @@ elif st.session_state.page == "القرآن الكريم":
 
 
 # ==================================================
-# صفحة الأذكار
+# الأذكار
 # ==================================================
 elif st.session_state.page == "الأذكار":
     st.markdown(
