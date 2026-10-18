@@ -1,18 +1,18 @@
 
+import streamlit as st
+import requests
 import json
 import html
-import requests
-import streamlit as st
 import streamlit.components.v1 as components
 
-# =====================================
-# إعداد التطبيق
-# =====================================
+# =========================
+# إعدادات التطبيق
+# =========================
 st.set_page_config(
     page_title="القرآن الكريم وحصن المسلم",
-    page_icon="📿",
+    page_icon="📖",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 QURAN_API = "https://api.alquran.cloud/v1"
@@ -27,644 +27,729 @@ RECITERS = {
     "ماهر المعيقلي": "ar.mahermuaiqly",
 }
 
-DEFAULT_RECITER = "محمد صديق المنشاوي"
+# =========================
+# التصميم
+# =========================
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800&display=swap');
 
-ADHKAR_SOURCES = [
-    "https://raw.githubusercontent.com/nawafalqari/azkar-api/main/azkar.json",
-    "https://raw.githubusercontent.com/rn0x/Adhkar-json/master/adhkar.json",
-    "https://www.hisnmuslim.com/api/ar/husn_ar.json",
+    html, body, [class*="css"] {
+        font-family: 'Cairo', sans-serif;
+    }
+
+    .stApp {
+        background:
+            radial-gradient(ellipse at top, #176b48 0%, transparent 65%),
+            linear-gradient(145deg, #063d2c, #0b5139 55%, #063526);
+        color: #fffdf2;
+    }
+
+    [data-testid="stHeader"] {
+        background: rgba(0, 0, 0, 0);
+    }
+
+    [data-testid="stSidebar"] {
+        background: #052f23;
+        border-left: 1px solid #c5a34a;
+    }
+
+    h1, h2, h3, p, label {
+        color: #fff8df;
+    }
+
+    .hero {
+        text-align: center;
+        padding: 30px 12px;
+        border: 1px solid #c7a84b;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #0b5038, #063323);
+        box-shadow: 0 8px 30px rgba(0,0,0,.2);
+        margin-bottom: 22px;
+    }
+
+    .hero h1 {
+        font-family: 'Amiri', serif;
+        color: #f2d780;
+        font-size: 42px;
+        margin-bottom: 8px;
+    }
+
+    .hero p {
+        font-size: 17px;
+        margin: 0;
+    }
+
+    .section-title {
+        color: #f2d780;
+        font-family: 'Amiri', serif;
+        text-align: center;
+        font-size: 30px;
+        margin: 20px 0;
+    }
+
+    .reciter-card {
+        border: 1px solid #c5a34a;
+        border-radius: 16px;
+        padding: 20px 12px;
+        text-align: center;
+        background: rgba(4, 43, 30, .8);
+        margin-bottom: 10px;
+        min-height: 85px;
+    }
+
+    .reciter-name {
+        color: #f5d979;
+        font-family: 'Amiri', serif;
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    .ayah-card {
+        direction: rtl;
+        text-align: center;
+        background: rgba(4, 44, 31, .84);
+        border: 1px solid #bda04a;
+        border-radius: 16px;
+        padding: 20px;
+        margin: 12px 0;
+        color: #fff8df;
+        font-family: 'Amiri', serif;
+        font-size: 25px;
+        line-height: 2.1;
+    }
+
+    .ayah-number {
+        color: #e8c65f;
+        font-size: 16px;
+        margin-right: 8px;
+        white-space: nowrap;
+    }
+
+    .zikr-card {
+        direction: rtl;
+        text-align: center;
+        background: rgba(4, 44, 31, .84);
+        border: 1px solid #bda04a;
+        border-radius: 16px;
+        padding: 22px;
+        margin: 14px 0;
+        color: #fff8df;
+        font-family: 'Amiri', serif;
+        font-size: 24px;
+        line-height: 2;
+    }
+
+    div.stButton > button {
+        width: 100%;
+        border: 1px solid #e0c260;
+        border-radius: 12px;
+        background: #c8a74d;
+        color: #103d2b;
+        font-weight: 800;
+        min-height: 44px;
+        transition: .2s;
+    }
+
+    div.stButton > button:hover {
+        background: #f0d77f;
+        color: #063d2c;
+        border-color: #f0d77f;
+    }
+
+    div[data-baseweb="select"] > div {
+        background-color: #f8f2df;
+        color: #153c2c;
+        border-radius: 10px;
+    }
+
+    .footer {
+        text-align: center;
+        padding: 22px 8px;
+        margin-top: 36px;
+        color: #f0d77f;
+        border-top: 1px solid #bda04a;
+        font-size: 14px;
+    }
+
+    audio {
+        width: 100%;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =========================
+# جلب البيانات من API
+# =========================
+def api_get(path):
+    """طلب البيانات مع مهلة اتصال ورسالة خطأ مفهومة."""
+    url = f"{QURAN_API}/{path}"
+
+    try:
+        response = requests.get(url, timeout=25)
+        response.raise_for_status()
+        result = response.json()
+
+        if result.get("code") != 200:
+            raise ValueError(result.get("status", "تعذّر جلب البيانات"))
+
+        return result.get("data")
+
+    except requests.RequestException as exc:
+        st.error(
+            "تعذّر الاتصال بمصدر القرآن الكريم. "
+            "تحقق من اتصال الإنترنت وحاول مرة أخرى."
+        )
+        st.caption(f"تفاصيل الاتصال: {exc}")
+        return None
+
+    except (ValueError, json.JSONDecodeError) as exc:
+        st.error("وصل رد غير متوقع من مصدر البيانات.")
+        st.caption(str(exc))
+        return None
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_surahs():
+    data = api_get("surah")
+    return data if isinstance(data, list) else []
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_surah_text(surah_number):
+    """النص القرآني مستقل عن إصدار الصوت."""
+    data = api_get(f"surah/{surah_number}")
+    return data if isinstance(data, dict) else None
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def get_surah_audio(surah_number, edition):
+    """جلب روابط التلاوة حسب القارئ المختار."""
+    data = api_get(f"surah/{surah_number}/{edition}")
+    return data if isinstance(data, dict) else None
+
+
+# =========================
+# الأذكار
+# =========================
+AZKAR = [
+    {
+        "title": "أذكار الصباح",
+        "text": "أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.",
+        "count": "مرة واحدة",
+    },
+    {
+        "title": "ذكر",
+        "text": "سبحان الله وبحمده.",
+        "count": "مائة مرة",
+    },
+    {
+        "title": "ذكر",
+        "text": "أستغفر الله وأتوب إليه.",
+        "count": "يُكثر منه",
+    },
+    {
+        "title": "سيد الاستغفار",
+        "text": "اللهم أنت ربي لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك عليّ، وأبوء بذنبي، فاغفر لي فإنه لا يغفر الذنوب إلا أنت.",
+        "count": "مرة صباحًا أو مساءً",
+    },
+    {
+        "title": "ذكر",
+        "text": "لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.",
+        "count": "عشر مرات أو أكثر",
+    },
+    {
+        "title": "الصلاة على النبي ﷺ",
+        "text": "اللهم صل وسلم على نبينا محمد.",
+        "count": "يُكثر منها",
+    },
+    {
+        "title": "أذكار المساء",
+        "text": "أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير.",
+        "count": "مرة واحدة",
+    },
 ]
 
-# =====================================
-# تنسيق الصفحة
-# =====================================
-st.markdown("""
-<style>
-.stApp {
-    direction: rtl;
-    text-align: right;
-    background:
-        radial-gradient(ellipse at top, #176b45 0%, transparent 65%),
-        linear-gradient(160deg, #062e23 0%, #0b4935 48%, #073426 100%);
-    color: #fffdf3;
-}
-
-[data-testid="stAppViewContainer"] {
-    background: transparent;
-}
-
-[data-testid="stHeader"] {
-    background: rgba(4, 40, 29, 0.65);
-}
-
-.block-container {
-    max-width: 1100px;
-    padding-top: 1.5rem;
-    padding-bottom: 4rem;
-}
-
-.main-title {
-    text-align: center;
-    color: #f2d477;
-    font-size: clamp(27px, 4vw, 38px);
-    font-weight: bold;
-    margin-top: 12px;
-}
-
-.subtitle {
-    text-align: center;
-    color: #e7f3df;
-    font-size: 19px;
-    margin: 15px 0 25px 0;
-    line-height: 2;
-}
-
-.hero-card {
-    background: linear-gradient(135deg, #18744c, #053527);
-    border: 1px solid #c5a84c;
-    border-radius: 22px;
-    padding: 25px 18px;
-    margin: 12px 0 12px 0;
-    text-align: center;
-    box-shadow: 0 8px 25px rgba(0,0,0,.22);
-}
-
-.sheikh-name {
-    color: #f2d477;
-    font-size: clamp(23px, 4vw, 31px);
-    font-weight: bold;
-    margin: 10px 0;
-}
-
-.sheikh-desc {
-    color: #e7f3df;
-    font-size: 16px;
-}
-
-.ayah {
-    background: rgba(10, 80, 54, .75);
-    border: 1px solid rgba(212, 175, 55, .45);
-    border-radius: 15px;
-    padding: 18px;
-    margin: 12px 0;
-    font-size: 24px;
-    line-height: 2.1;
-    text-align: center;
-    color: #fffbea;
-}
-
-.dhikr-card {
-    background: rgba(10, 80, 54, .75);
-    border: 1px solid rgba(212, 175, 55, .4);
-    border-radius: 16px;
-    padding: 20px;
-    margin: 10px 0;
-    font-size: 21px;
-    line-height: 2;
-    text-align: center;
-    color: #fffbea;
-}
-
-h1, h2, h3, h4, p {
-    color: #fffdf3;
-}
-
-[data-testid="stWidgetLabel"] p {
-    color: #f2d477 !important;
-}
-
-.stButton button {
-    border-radius: 12px;
-    min-height: 46px;
-    border: 1px solid #c5a84c;
-    font-weight: bold;
-}
-
-.stButton button[kind="primary"] {
-    background: linear-gradient(135deg, #1ba66f, #087348);
-    color: white;
-    border: 1px solid #e0c45f;
-}
-
-.stButton button:hover {
-    border-color: #f2d477;
-    color: #f2d477;
-}
-
-hr {
-    border-color: rgba(212,175,55,.35);
-}
-
-.footer {
-    text-align: center;
-    color: #f2d477;
-    padding: 25px 0;
-    margin-top: 30px;
-    border-top: 1px solid rgba(212,175,55,.35);
-}
-
-@media (max-width: 600px) {
-    .block-container {
-        padding-left: 14px;
-        padding-right: 14px;
-    }
-
-    .subtitle {
-        font-size: 16px;
-    }
-
-    .ayah {
-        font-size: 21px;
-        padding: 14px;
-    }
-
-    .dhikr-card {
-        font-size: 19px;
-        padding: 15px;
-    }
-}
-</style>
-
-<div class="main-title">☪ القرآن الكريم وحصن المسلم</div>
-<div class="subtitle">
-﴿ أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ ﴾
-</div>
-""", unsafe_allow_html=True)
-
-
-# =====================================
-# تحميل القرآن
-# =====================================
-@st.cache_data(ttl=3600, show_spinner=False)
-def get_surah_list():
-    response = requests.get(f"{QURAN_API}/surah", timeout=20)
-    response.raise_for_status()
-    result = response.json()
-
-    if result.get("code") != 200:
-        raise ValueError("تعذر تحميل قائمة السور")
-
-    return result["data"]
-
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def get_surah(number, edition):
-    response = requests.get(
-        f"{QURAN_API}/surah/{number}/{edition}",
-        timeout=30,
-    )
-    response.raise_for_status()
-    result = response.json()
-
-    if result.get("code") != 200:
-        raise ValueError("تعذر تحميل السورة")
-
-    return result["data"]
-
-
-# =====================================
-# تحميل الأذكار
-# =====================================
-def normalize_adhkar(data):
-    records = []
-
-    def add(category, text, count=1, reference=""):
-        if isinstance(text, str) and text.strip():
-            records.append({
-                "category": str(category or "أذكار متنوعة"),
-                "text": text.strip(),
-                "count": count if count not in (None, "") else 1,
-                "reference": reference or "",
-            })
-
-    def walk(obj, category="أذكار متنوعة"):
-        if isinstance(obj, list):
-            for item in obj:
-                walk(item, category)
-            return
-
-        if not isinstance(obj, dict):
-            return
-
-        title = (
-            obj.get("category")
-            or obj.get("title")
-            or obj.get("TITLE")
-            or obj.get("name")
-            or category
-        )
-
-        if isinstance(obj.get("array"), list):
-            for item in obj["array"]:
-                if isinstance(item, dict):
-                    text = (
-                        item.get("text")
-                        or item.get("zekr")
-                        or item.get("ARABIC_TEXT")
-                        or item.get("TEXT")
-                        or item.get("content")
-                    )
-                    add(
-                        title,
-                        text,
-                        item.get("count", item.get("repeat", 1)),
-                        item.get("reference", item.get("REFERENCE", "")),
-                    )
-                elif isinstance(item, str):
-                    add(title, item)
-            return
-
-        text = (
-            obj.get("text")
-            or obj.get("zekr")
-            or obj.get("ARABIC_TEXT")
-            or obj.get("arabic_text")
-            or obj.get("TEXT")
-        )
-
-        if isinstance(text, str):
-            add(
-                title,
-                text,
-                obj.get("count", obj.get("repeat", obj.get("REPEAT", 1))),
-                obj.get("reference", obj.get("REFERENCE", "")),
-            )
-
-        ignored = {
-            "text", "zekr", "ARABIC_TEXT", "arabic_text", "TEXT",
-            "count", "repeat", "REPEAT", "reference", "REFERENCE",
-        }
-
-        for key, value in obj.items():
-            if key not in ignored and isinstance(value, (dict, list)):
-                walk(value, str(title))
-
-    walk(data)
-
-    unique = []
-    seen = set()
-
-    for item in records:
-        key = (item["category"], item["text"])
-        if key not in seen:
-            seen.add(key)
-            unique.append(item)
-
-    return unique
-
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def get_adhkar():
-    for url in ADHKAR_SOURCES:
-        try:
-            response = requests.get(
-                url,
-                timeout=25,
-                headers={"User-Agent": "Mozilla/5.0"},
-            )
-            response.raise_for_status()
-            data = json.loads(response.content.decode("utf-8-sig"))
-            records = normalize_adhkar(data)
-
-            if records:
-                return records
-        except Exception:
-            continue
-
-    raise RuntimeError("تعذر تحميل الأذكار من المصادر المتاحة.")
-
-
-# =====================================
-# حالة التطبيق
-# =====================================
+# =========================
+# حالة التنقل
+# =========================
 if "page" not in st.session_state:
     st.session_state.page = "الرئيسية"
 
-if "loaded_surah" not in st.session_state:
-    st.session_state.loaded_surah = None
+if "selected_reciter" not in st.session_state:
+    st.session_state.selected_reciter = "مشاري العفاسي"
 
-if "loaded_reciter" not in st.session_state:
-    st.session_state.loaded_reciter = RECITERS[DEFAULT_RECITER]
+if "selected_surah" not in st.session_state:
+    st.session_state.selected_surah = 1
 
 
-# =====================================
-# أزرار التنقل
-# =====================================
-col1, col2, col3 = st.columns(3)
+def go_to_quran(reciter=None):
+    if reciter in RECITERS:
+        st.session_state.selected_reciter = reciter
 
-with col1:
-    if st.button("🏠 الرئيسية", use_container_width=True):
+    st.session_state.page = "القرآن الكريم"
+
+
+# =========================
+# الشريط الجانبي
+# =========================
+with st.sidebar:
+    st.markdown(
+        "<div class='section-title'>☪ حصن المسلم</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+
+    if st.button("🏠 الرئيسية", key="nav_home"):
         st.session_state.page = "الرئيسية"
         st.rerun()
 
-with col2:
-    if st.button("📖 القرآن الكريم", use_container_width=True):
+    if st.button("📖 القرآن الكريم", key="nav_quran"):
         st.session_state.page = "القرآن الكريم"
         st.rerun()
 
-with col3:
-    if st.button("📿 حصن المسلم", use_container_width=True):
+    if st.button("🤲 الأذكار", key="nav_azkar"):
         st.session_state.page = "الأذكار"
         st.rerun()
 
-st.divider()
+    st.markdown("---")
+    st.markdown("### 🎙️ اختر القارئ")
 
+    sidebar_reciter = st.selectbox(
+        "القارئ",
+        list(RECITERS.keys()),
+        index=list(RECITERS.keys()).index(
+            st.session_state.selected_reciter
+        ),
+        key="sidebar_reciter",
+    )
 
-# =====================================
+    st.session_state.selected_reciter = sidebar_reciter
+
+    if st.button("استماع للقرآن", key="sidebar_listen"):
+        st.session_state.selected_surah = 1
+        st.session_state.page = "القرآن الكريم"
+        st.rerun()
+
+# =========================
+# رأس الصفحة
+# =========================
+st.markdown(
+    """
+    <div class="hero">
+        <h1>☪ القرآن الكريم وحصن المسلم ☪</h1>
+        <p>﴿ وَاذْكُرُوا اللَّهَ كَثِيرًا لَعَلَّكُمْ تُفْلِحُونَ ﴾</p>
+        <p>القرآن الكريم والتلاوات والأذكار اليومية</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =========================
 # الصفحة الرئيسية
-# =====================================
+# =========================
 if st.session_state.page == "الرئيسية":
 
-    st.markdown("""
-    <div class="hero-card">
-        <div style="font-size:45px;">☪</div>
-        <div class="sheikh-name">الشيخ محمد صديق المنشاوي</div>
-        <div class="sheikh-desc">
-            تلاوات خاشعة من القرآن الكريم
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        "<div class='section-title'>🎙️ اختر قارئك المفضل</div>",
+        unsafe_allow_html=True,
+    )
 
-    # الزر تحت كارت الشيخ مباشرة
-    if st.button(
-        "🎧 استمع إلى تلاوات الشيخ",
-        key="listen_sheikh",
-        type="primary",
-        use_container_width=True,
-    ):
-        st.session_state.page = "القرآن الكريم"
-        st.session_state.loaded_surah = 1
-        st.session_state.loaded_reciter = RECITERS[DEFAULT_RECITER]
-        st.rerun()
+    reciter_names = list(RECITERS.keys())
 
-    if st.button(
-        "📖 قراءة القرآن الكريم",
-        key="read_quran",
-        use_container_width=True,
-    ):
-        st.session_state.page = "القرآن الكريم"
-        st.rerun()
+    for start in range(0, len(reciter_names), 2):
+        cols = st.columns(2)
 
-    st.write("")
+        for offset, col in enumerate(cols):
+            index = start + offset
+
+            if index >= len(reciter_names):
+                continue
+
+            name = reciter_names[index]
+
+            with col:
+                st.markdown(
+                    f"""
+                    <div class="reciter-card">
+                        <div class="reciter-name">
+                            🎧 {html.escape(name)}
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                if st.button(
+                    "📖 قراءة القرآن",
+                    key=f"read_{index}",
+                ):
+                    go_to_quran(name)
+                    st.rerun()
+
+                if st.button(
+                    "▶️ استماع",
+                    key=f"listen_{index}",
+                ):
+                    go_to_quran(name)
+                    st.rerun()
+
+    st.markdown("---")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 📖 القرآن الكريم")
-        st.write("اختر السورة والقارئ واستمع إلى التلاوة.")
-
-        if st.button("افتح القرآن الكريم", key="home_quran",
-                     use_container_width=True):
+        st.markdown(
+            """
+            <div class="zikr-card">
+                📖<br>
+                <b>القرآن الكريم</b><br>
+                اقرأ الآيات واستمع إلى التلاوات
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("افتح القرآن الكريم", key="home_quran"):
             st.session_state.page = "القرآن الكريم"
             st.rerun()
 
     with col2:
-        st.markdown("### 📿 حصن المسلم")
-        st.write("أذكار الصباح والمساء والنوم والصلاة.")
-
-        if st.button("افتح الأذكار", key="home_adhkar",
-                     use_container_width=True):
+        st.markdown(
+            """
+            <div class="zikr-card">
+                🤲<br>
+                <b>حصن المسلم</b><br>
+                أذكار الصباح والمساء وأذكار متنوعة
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("افتح الأذكار", key="home_azkar"):
             st.session_state.page = "الأذكار"
             st.rerun()
 
-
-# =====================================
+# =========================
 # صفحة القرآن الكريم
-# =====================================
+# =========================
 elif st.session_state.page == "القرآن الكريم":
 
-    st.subheader("📖 القرآن الكريم")
-
-    try:
-        surahs = get_surah_list()
-    except Exception as exc:
-        st.error(f"تعذر تحميل السور: {exc}")
-        st.stop()
-
-    names = [f'{s["number"]}. {s["name"]}' for s in surahs]
-
-    current_surah = st.session_state.loaded_surah or 1
-    current_surah = max(1, min(current_surah, len(names)))
-
-    selected_name = st.selectbox(
-        "اختر السورة",
-        names,
-        index=current_surah - 1,
-        key="selected_surah",
+    st.markdown(
+        "<div class='section-title'>📖 القرآن الكريم</div>",
+        unsafe_allow_html=True,
     )
 
-    surah_number = names.index(selected_name) + 1
+    surahs = get_surahs()
 
-    reciter_names = list(RECITERS.keys())
+    if not surahs:
+        st.warning(
+            "لم نتمكن من تحميل قائمة السور. "
+            "حاول تحديث الصفحة بعد قليل."
+        )
+    else:
+        surah_names = [
+            f"{s['number']}. {s['name']} — {s['englishName']}"
+            for s in surahs
+        ]
 
-    current_edition = st.session_state.loaded_reciter
+        default_index = max(
+            0,
+            min(
+                int(st.session_state.selected_surah) - 1,
+                len(surahs) - 1,
+            ),
+        )
 
-    default_index = next(
-        (
-            i for i, name in enumerate(reciter_names)
-            if RECITERS[name] == current_edition
-        ),
-        reciter_names.index(DEFAULT_RECITER),
-    )
+        col1, col2 = st.columns(2)
 
-    reciter_name = st.selectbox(
-        "اختر القارئ",
-        reciter_names,
-        index=default_index,
-        key="selected_reciter",
-    )
+        with col1:
+            chosen_surah_label = st.selectbox(
+                "اختر السورة",
+                surah_names,
+                index=default_index,
+                key="surah_select",
+            )
 
-    edition = RECITERS[reciter_name]
+        with col2:
+            reciter_name = st.selectbox(
+                "اختر القارئ",
+                list(RECITERS.keys()),
+                index=list(RECITERS.keys()).index(
+                    st.session_state.selected_reciter
+                ),
+                key="quran_reciter",
+            )
+            st.session_state.selected_reciter = reciter_name
 
-    # زر الاستماع ظاهر داخل قسم القرآن أسفل الاختيارات
-    if st.button(
-        "🎧 استمع إلى السورة المختارة",
-        key="play_selected_surah",
-        type="primary",
-        use_container_width=True,
-    ):
-        st.session_state.loaded_surah = surah_number
-        st.session_state.loaded_reciter = edition
-        st.rerun()
+        surah_number = surah_names.index(chosen_surah_label) + 1
+        st.session_state.selected_surah = surah_number
 
-    if (
-        st.session_state.loaded_surah == surah_number
-        and st.session_state.loaded_reciter == edition
-    ):
-        try:
-            with st.spinner("جاري تحميل السورة..."):
-                surah = get_surah(surah_number, edition)
+        surah_info = surahs[surah_number - 1]
 
-            st.markdown(f"### سورة {surah['name']}")
+        st.markdown(
+            f"<div class='section-title'>{html.escape(surah_info['name'])}</div>",
+            unsafe_allow_html=True,
+        )
 
-            for ayah in surah.get("ayahs", []):
-                verse = html.escape(ayah.get("text", ""))
-                number = ayah.get("numberInSurah", "")
+        # جلب النص والصوت بشكل منفصل
+        with st.spinner("جارٍ تحميل آيات السورة..."):
+            text_data = get_surah_text(surah_number)
 
-                st.markdown(
-                    f'<div class="ayah">{verse}'
-                    f'<br><small>﴿ {number} ﴾</small></div>',
-                    unsafe_allow_html=True,
-                )
+        with st.spinner("جارٍ تجهيز التلاوة..."):
+            audio_data = get_surah_audio(
+                surah_number,
+                RECITERS[reciter_name],
+            )
 
-            audio_urls = [
-                ayah.get("audio")
-                for ayah in surah.get("ayahs", [])
-                if ayah.get("audio")
-            ]
+        # عرض الصوت إن كان متاحًا
+        audio_urls = []
 
-            if audio_urls:
-                urls_json = json.dumps(audio_urls)
+        if audio_data and isinstance(audio_data.get("ayahs"), list):
+            for ayah in audio_data["ayahs"]:
+                url = ayah.get("audio")
+                audio_urls.append(url if isinstance(url, str) else "")
 
-                components.html(
-                    f"""
-                    <div dir="rtl"
-                         style="text-align:center;padding:15px;
-                         background:#0b4935;border:1px solid #c5a84c;
-                         border-radius:15px;color:#fffbea">
-                      <h3 style="color:#f2d477">
-                        🎧 استمع إلى سورة {html.escape(surah['name'])}
-                      </h3>
+        if audio_urls and any(audio_urls):
+            valid_urls = [u for u in audio_urls if u]
 
-                      <audio id="player" controls
-                             style="width:100%;max-width:600px">
-                      </audio>
+            escaped_urls = json.dumps(
+                valid_urls,
+                ensure_ascii=False,
+            ).replace("</", "<\\/")
 
-                      <p id="status">اضغط تشغيل لبدء التلاوة</p>
+            components.html(
+                f"""
+                <div dir="rtl" style="
+                    background:#073b2a;
+                    border:1px solid #c5a34a;
+                    border-radius:16px;
+                    padding:18px;
+                    color:#fff8df;
+                    font-family:Arial,sans-serif;
+                    text-align:center;
+                ">
+                    <div style="
+                        font-size:20px;
+                        font-weight:bold;
+                        color:#f2d780;
+                        margin-bottom:12px;
+                    ">
+                        ▶️ استماع إلى سورة {html.escape(surah_info['name'])}
                     </div>
 
-                    <script>
-                    const urls = {urls_json};
-                    const player = document.getElementById("player");
-                    const status = document.getElementById("status");
-                    let current = 0;
+                    <audio id="quranAudio"
+                           controls
+                           preload="metadata"
+                           style="width:100%;">
+                    </audio>
 
-                    if (urls.length > 0) {{
-                        player.src = urls[0];
+                    <div id="audioStatus" style="
+                        margin-top:10px;
+                        font-size:14px;
+                        color:#f2d780;
+                    ">
+                        اضغط تشغيل لبدء التلاوة
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        gap:10px;
+                        margin-top:14px;
+                    ">
+                        <button id="previousAyah" style="
+                            flex:1;
+                            padding:10px;
+                            border:0;
+                            border-radius:8px;
+                            background:#c8a74d;
+                            color:#103d2b;
+                            font-weight:bold;
+                            cursor:pointer;
+                        ">الآية السابقة</button>
+
+                        <button id="nextAyah" style="
+                            flex:1;
+                            padding:10px;
+                            border:0;
+                            border-radius:8px;
+                            background:#c8a74d;
+                            color:#103d2b;
+                            font-weight:bold;
+                            cursor:pointer;
+                        ">الآية التالية</button>
+                    </div>
+                </div>
+
+                <script>
+                    const audioUrls = {escaped_urls};
+                    const player = document.getElementById("quranAudio");
+                    const status = document.getElementById("audioStatus");
+                    let currentAyah = 0;
+
+                    function loadAyah(index, autoplay) {{
+                        if (!audioUrls.length) return;
+
+                        currentAyah = Math.max(
+                            0,
+                            Math.min(index, audioUrls.length - 1)
+                        );
+
+                        player.src = audioUrls[currentAyah];
+                        status.textContent =
+                            "الآية " + (currentAyah + 1) +
+                            " من " + audioUrls.length;
+
+                        if (autoplay) {{
+                            player.play().catch(() => {{
+                                status.textContent =
+                                    "اضغط تشغيل لبدء الاستماع";
+                            }});
+                        }}
                     }}
 
                     player.addEventListener("ended", function() {{
-                        current++;
-                        if (current < urls.length) {{
-                            player.src = urls[current];
-                            status.textContent =
-                                "الآية " + (current + 1) +
-                                " من " + urls.length;
-                            player.play().catch(() => {{}});
+                        if (currentAyah < audioUrls.length - 1) {{
+                            loadAyah(currentAyah + 1, true);
                         }} else {{
-                            status.textContent = "انتهت السورة";
+                            status.textContent = "انتهت تلاوة السورة";
                         }}
                     }});
-                    </script>
-                    """,
-                    height=175,
-                )
-            else:
-                st.warning(
-                    "لا توجد روابط صوتية متاحة من المصدر لهذه السورة."
-                )
 
-        except Exception as exc:
-            st.error(f"حدث خطأ أثناء تحميل السورة: {exc}")
+                    player.addEventListener("error", function() {{
+                        status.textContent =
+                            "تعذر تشغيل هذا المقطع. جرّب تحديث الصفحة أو اختيار قارئ آخر.";
+                    }});
 
+                    document.getElementById("previousAyah")
+                        .addEventListener("click", function() {{
+                            loadAyah(currentAyah - 1, true);
+                        }});
 
-# =====================================
-# صفحة الأذكار
-# =====================================
-elif st.session_state.page == "الأذكار":
+                    document.getElementById("nextAyah")
+                        .addEventListener("click", function() {{
+                            loadAyah(currentAyah + 1, true);
+                        }});
 
-    st.subheader("📿 حصن المسلم — الأذكار")
-
-    try:
-        with st.spinner("جاري تحميل الأذكار..."):
-            adhkar = get_adhkar()
-
-        categories = sorted({
-            item["category"] for item in adhkar
-        })
-
-        selected_category = st.selectbox(
-            "اختر قسم الأذكار",
-            ["كل الأذكار"] + categories,
-        )
-
-        search = st.text_input(
-            "🔎 ابحث في الأذكار",
-            placeholder="اكتب كلمة للبحث...",
-        )
-
-        filtered = adhkar
-
-        if selected_category != "كل الأذكار":
-            filtered = [
-                item for item in filtered
-                if item["category"] == selected_category
-            ]
-
-        if search.strip():
-            query = search.strip()
-            filtered = [
-                item for item in filtered
-                if query in item["text"]
-                or query in item["category"]
-            ]
-
-        st.caption(f"عدد الأذكار: {len(filtered)}")
-
-        if not filtered:
-            st.warning("لا توجد أذكار مطابقة للبحث.")
+                    loadAyah(0, false);
+                </script>
+                """,
+                height=230,
+                scrolling=False,
+            )
         else:
-            page_size = 15
-            total_pages = (len(filtered) - 1) // page_size + 1
-
-            page_num = st.number_input(
-                "رقم الصفحة",
-                min_value=1,
-                max_value=total_pages,
-                value=1,
-                step=1,
+            st.warning(
+                "تعذّر تحميل التلاوة لهذا القارئ حاليًا. "
+                "يمكنك تجربة قارئ آخر أو المحاولة لاحقًا."
             )
 
-            start = (int(page_num) - 1) * page_size
+        st.markdown("---")
+        st.markdown(
+            "<div class='section-title'>آيات السورة</div>",
+            unsafe_allow_html=True,
+        )
 
-            for i, item in enumerate(
-                filtered[start:start + page_size],
-                start=start + 1,
-            ):
-                st.markdown(f"#### {i}. {html.escape(item['category'])}")
+        if text_data and isinstance(text_data.get("ayahs"), list):
+            ayahs = text_data["ayahs"]
 
+            if surah_number != 1 and surah_number != 9:
                 st.markdown(
-                    f'<div class="dhikr-card">'
-                    f'{html.escape(item["text"])}</div>',
+                    "<div class='ayah-card'>"
+                    "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
+                    "</div>",
                     unsafe_allow_html=True,
                 )
 
-                count = item.get("count", 1)
+            for ayah in ayahs:
+                ayah_text = html.escape(ayah.get("text", ""))
+                ayah_number = ayah.get("numberInSurah", "")
 
-                if str(count) not in ("1", "None", ""):
-                    st.caption(f"عدد التكرار: {count}")
+                st.markdown(
+                    f"""
+                    <div class="ayah-card">
+                        {ayah_text}
+                        <span class="ayah-number">
+                            ﴿ {ayah_number} ﴾
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-                if item.get("reference"):
-                    st.caption(f"المرجع: {item['reference']}")
+        else:
+            st.error(
+                "لم نتمكن من تحميل نص الآيات. "
+                "تحقق من اتصال الإنترنت ثم حاول مرة أخرى."
+            )
 
-                st.divider()
+# =========================
+# صفحة الأذكار
+# =========================
+elif st.session_state.page == "الأذكار":
 
-            st.caption(f"صفحة {int(page_num)} من {total_pages}")
+    st.markdown(
+        "<div class='section-title'>🤲 حصن المسلم — الأذكار</div>",
+        unsafe_allow_html=True,
+    )
 
-    except Exception as exc:
-        st.error("تعذر تحميل الأذكار.")
-        st.code(str(exc))
-        st.info("تأكد من اتصال الإنترنت ثم أعد المحاولة.")
+    zikr_filter = st.selectbox(
+        "اختر قسم الأذكار",
+        [
+            "جميع الأذكار",
+            "أذكار الصباح",
+            "أذكار المساء",
+            "أذكار متنوعة",
+        ],
+    )
 
+    for index, zikr in enumerate(AZKAR):
+        title = zikr["title"]
 
-# =====================================
+        if zikr_filter == "أذكار الصباح" and title != "أذكار الصباح":
+            continue
+
+        if zikr_filter == "أذكار المساء" and title != "أذكار المساء":
+            continue
+
+        if zikr_filter == "أذكار متنوعة" and title in [
+            "أذكار الصباح",
+            "أذكار المساء",
+        ]:
+            continue
+
+        st.markdown(
+            f"""
+            <div class="zikr-card">
+                <div style="color:#f2d780;font-weight:bold;">
+                    {html.escape(title)}
+                </div>
+                <div>{html.escape(zikr['text'])}</div>
+                <div style="font-size:16px;color:#e5cb76;">
+                    التكرار: {html.escape(zikr['count'])}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if st.button("📋 نسخ الذكر", key=f"copy_zikr_{index}"):
+            st.code(zikr["text"], language=None)
+            st.info(
+                "يمكنك تحديد النص ونسخه من المربع أعلاه."
+            )
+
+# =========================
 # التذييل
-# =====================================
-st.markdown("""
-<div class="footer">
-    ★ OMAR MELIGY ★
-    <div style="color:#e7f3df;font-size:13px;margin-top:8px;">
-        اللهم اجعل القرآن الكريم ربيع قلوبنا
+# =========================
+st.markdown(
+    """
+    <div class="footer">
+        🌿 اللهم اجعل القرآن الكريم ربيع قلوبنا ونور صدورنا 🌿
+        <br><br>
+        OMAR MELIGY
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
